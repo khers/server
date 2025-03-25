@@ -781,10 +781,13 @@ class OpenSonicProvider(MusicProvider):
                 "Due to the streaming method used by the subsonic API, M4A files "
                 "may fail. See provider documentation for more information."
             )
-            mime_type = "?"
-        # For mp3 files, ffmpeg wants to be told 'mp3' instead of 'audio/mpeg'
-        elif mime_type.endswith("mpeg"):
-            mime_type = item.suffix
+
+        # We believe that reporting the container type here is causing playback problems and ffmpeg
+        # should be capable of guessing the correct container type for any media supported by
+        # OpenSubsonic servers. Better to let ffmpeg figure things out than tell it something
+        # confusing. We still go through the effort of figuring out what the server thinks the
+        # container is to warn about M4A files.
+        mime_type = "?"
 
         return StreamDetails(
             item_id=item.id,
