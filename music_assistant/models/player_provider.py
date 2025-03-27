@@ -135,12 +135,16 @@ class PlayerProvider(Provider):
             CONF_ENTRY_ANNOUNCE_VOLUME,
             CONF_ENTRY_ANNOUNCE_VOLUME_MIN,
             CONF_ENTRY_ANNOUNCE_VOLUME_MAX,
-            CONF_ENTRY_HIDE_PLAYER_IN_UI_ALWAYS_DEFAULT
-            if player and player.hidden_by_default
-            else CONF_ENTRY_HIDE_PLAYER_IN_UI,
-            CONF_ENTRY_EXPOSE_PLAYER_TO_HA
-            if player and player.expose_to_ha_by_default
-            else CONF_ENTRY_EXPOSE_PLAYER_TO_HA_DEFAULT_DISABLED,
+            (
+                CONF_ENTRY_HIDE_PLAYER_IN_UI_ALWAYS_DEFAULT
+                if player and player.hidden_by_default
+                else CONF_ENTRY_HIDE_PLAYER_IN_UI
+            ),
+            (
+                CONF_ENTRY_EXPOSE_PLAYER_TO_HA
+                if player and player.expose_to_ha_by_default
+                else CONF_ENTRY_EXPOSE_PLAYER_TO_HA_DEFAULT_DISABLED
+            ),
             # add player control entries
             *self._create_player_control_config_entries(player),
             CONF_ENTRY_AUTO_PLAY,

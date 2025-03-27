@@ -48,6 +48,7 @@ from music_assistant.constants import (
     CONF_ENTRY_ANNOUNCE_VOLUME_MIN,
     CONF_ENTRY_ANNOUNCE_VOLUME_STRATEGY,
     CONF_ENTRY_PLAYER_ICON,
+    CONF_EXPOSE_PLAYER_TO_HA,
     CONF_HIDE_PLAYER_IN_UI,
     CONF_MUTE_CONTROL,
     CONF_PLAYERS,
@@ -1485,6 +1486,7 @@ class PlayerController(CoreController):
         player.hide_player_in_ui = {
             HidePlayerOption(x) for x in config.get_value(CONF_HIDE_PLAYER_IN_UI)
         }
+        player.expose_to_ha = bool(config.get_value(CONF_EXPOSE_PLAYER_TO_HA))
         player.icon = config.get_value(CONF_ENTRY_PLAYER_ICON.key)
         player.power_control = config.get_value(CONF_POWER_CONTROL)
         if player.power_control == PLAYER_CONTROL_FAKE:

@@ -68,7 +68,7 @@ class ScrobblerHelper:
         if report.is_playing and (
             self.currently_playing is None or self.currently_playing != report.uri
         ):
-            update_now_playing()
+            await update_now_playing()
 
         if self.should_scrobble(report):
             await scrobble()
