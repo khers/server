@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from libopensonic.connection import Connection as SonicConnection
@@ -358,6 +359,9 @@ class OpenSonicProvider(MusicProvider):
             },
             duration=sonic_episode.duration,
         )
+
+        if sonic_episode.publish_date:
+            episode.metadata.release_date = datetime.fromisoformat(sonic_episode.publish_date)
 
         if sonic_episode.description:
             episode.metadata.description = sonic_episode.description
