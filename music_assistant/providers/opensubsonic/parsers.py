@@ -5,10 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from music_assistant_models.enums import (
-    ImageType,
-    MediaType,
-)
+from music_assistant_models.enums import ImageType, MediaType
 from music_assistant_models.media_items import (
     Album,
     Artist,
@@ -25,6 +22,7 @@ if TYPE_CHECKING:
     from libopensonic.media import AlbumInfo as SonicAlbumInfo
     from libopensonic.media import Artist as SonicArtist
     from libopensonic.media import ArtistInfo as SonicArtistInfo
+
 
 UNKNOWN_ARTIST_ID = "fake_artist_unknown"
 
@@ -48,11 +46,11 @@ def parse_artist(
     )
 
     artist.metadata.images = UniqueList()
-    if sonic_artist.cover_id:
+    if sonic_artist.cover_art:
         artist.metadata.images.append(
             MediaItemImage(
                 type=ImageType.THUMB,
-                path=sonic_artist.cover_id,
+                path=sonic_artist.cover_art,
                 provider=instance_id,
                 remotely_accessible=False,
             )
@@ -61,11 +59,11 @@ def parse_artist(
     if sonic_info:
         if sonic_info.biography:
             artist.metadata.description = sonic_info.biography
-        if sonic_info.small_url:
+        if sonic_info.small_image_url:
             artist.metadata.images.append(
                 MediaItemImage(
                     type=ImageType.THUMB,
-                    path=sonic_info.small_url,
+                    path=sonic_info.small_image_url,
                     provider=instance_id,
                     remotely_accessible=True,
                 )
@@ -98,11 +96,11 @@ def parse_album(
     )
 
     album.metadata.images = UniqueList()
-    if sonic_album.cover_id:
+    if sonic_album.cover_art:
         album.metadata.images.append(
             MediaItemImage(
                 type=ImageType.THUMB,
-                path=sonic_album.cover_id,
+                path=sonic_album.cover_art,
                 provider=instance_id,
                 remotely_accessible=False,
             ),
@@ -139,11 +137,11 @@ def parse_album(
         )
 
     if sonic_info:
-        if sonic_info.small_url:
+        if sonic_info.small_image_url:
             album.metadata.images.append(
                 MediaItemImage(
                     type=ImageType.THUMB,
-                    path=sonic_info.small_url,
+                    path=sonic_info.small_image_url,
                     remotely_accessible=False,
                     provider=instance_id,
                 )
