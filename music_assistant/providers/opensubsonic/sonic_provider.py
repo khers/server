@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from libopensonic.connection import Connection as SonicConnection
@@ -14,13 +13,7 @@ from libopensonic.errors import (
     ParameterError,
     SonicError,
 )
-from music_assistant_models.enums import (
-    ContentType,
-    ImageType,
-    MediaType,
-    ProviderFeature,
-    StreamType,
-)
+from music_assistant_models.enums import ContentType, MediaType, ProviderFeature, StreamType
 from music_assistant_models.errors import (
     ActionUnavailable,
     LoginFailed,
@@ -33,7 +26,6 @@ from music_assistant_models.media_items import (
     Artist,
     AudioFormat,
     ItemMapping,
-    MediaItemImage,
     MediaItemType,
     Playlist,
     Podcast,
@@ -43,7 +35,6 @@ from music_assistant_models.media_items import (
     Track,
 )
 from music_assistant_models.streamdetails import StreamDetails
-from music_assistant_models.unique_list import UniqueList
 
 from music_assistant.constants import (
     CONF_PASSWORD,
@@ -54,7 +45,15 @@ from music_assistant.constants import (
 )
 from music_assistant.models.music_provider import MusicProvider
 
-from .parsers import parse_album, parse_artist
+from .parsers import (
+    EP_CHAN_SEP,
+    UNKNOWN_ARTIST_ID,
+    parse_album,
+    parse_artist,
+    parse_epsiode,
+    parse_playlist,
+    parse_podcast,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
@@ -64,7 +63,6 @@ if TYPE_CHECKING:
     from libopensonic.media import Child as SonicSong
     from libopensonic.media import OpenSubsonicExtension
     from libopensonic.media import Playlist as SonicPlaylist
-    from libopensonic.media import PodcastChannel as SonicPodcast
     from libopensonic.media import PodcastEpisode as SonicEpisode
 
 
@@ -73,19 +71,11 @@ CONF_ENABLE_PODCASTS = "enable_podcasts"
 CONF_ENABLE_LEGACY_AUTH = "enable_legacy_auth"
 CONF_OVERRIDE_OFFSET = "override_transcode_offest"
 
-UNKNOWN_ARTIST_ID = "fake_artist_unknown"
 
 # We need the following prefix because of the way that Navidrome reports artists for individual
 # tracks on Various Artists albums, see the note in the _parse_track() method and the handling
 # in get_artist()
 NAVI_VARIOUS_PREFIX = "MA-NAVIDROME-"
-
-
-# Because of some subsonic API weirdness, we have to lookup any podcast episode by finding it in
-# the list of episodes in a channel, to facilitate, we will use both the episode id and the
-# channel id concatenated as an episode id to MA
-EP_CHAN_SEP = "$!$"
-
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -278,99 +268,6 @@ class OpenSonicProvider(MusicProvider):
             track.artists.append(artist)
         return track
 
-    def _parse_playlist(self, sonic_playlist: SonicPlaylist) -> Playlist:
-        playlist = Playlist(
-            item_id=sonic_playlist.id,
-            provider=self.domain,
-            name=sonic_playlist.name,
-            is_editable=True,
-            provider_mappings={
-                ProviderMapping(
-                    item_id=sonic_playlist.id,
-                    provider_domain=self.domain,
-                    provider_instance=self.instance_id,
-                )
-            },
-        )
-
-        if sonic_playlist.cover_art:
-            playlist.metadata.images = UniqueList()
-            playlist.metadata.images.append(
-                MediaItemImage(
-                    type=ImageType.THUMB,
-                    path=sonic_playlist.cover_art,
-                    provider=self.instance_id,
-                    remotely_accessible=False,
-                )
-            )
-
-        return playlist
-
-    def _parse_podcast(self, sonic_podcast: SonicPodcast) -> Podcast:
-        podcast = Podcast(
-            item_id=sonic_podcast.id,
-            provider=self.domain,
-            name=sonic_podcast.title,
-            uri=sonic_podcast.url,
-            total_episodes=len(sonic_podcast.episode),
-            provider_mappings={
-                ProviderMapping(
-                    item_id=sonic_podcast.id,
-                    provider_domain=self.domain,
-                    provider_instance=self.instance_id,
-                )
-            },
-        )
-
-        podcast.metadata.description = sonic_podcast.description
-        podcast.metadata.images = UniqueList()
-
-        if sonic_podcast.cover_art:
-            podcast.metadata.images.append(
-                MediaItemImage(
-                    type=ImageType.THUMB,
-                    path=sonic_podcast.cover_art,
-                    provider=self.instance_id,
-                    remotely_accessible=False,
-                )
-            )
-
-        return podcast
-
-    def _parse_epsiode(
-        self, sonic_episode: SonicEpisode, sonic_channel: SonicPodcast
-    ) -> PodcastEpisode:
-        eid = f"{sonic_episode.channel_id}{EP_CHAN_SEP}{sonic_episode.id}"
-        pos = 1
-        for ep in sonic_channel.episode:
-            if ep.id == sonic_episode.id:
-                break
-            pos += 1
-
-        episode = PodcastEpisode(
-            item_id=eid,
-            provider=self.domain,
-            name=sonic_episode.title,
-            position=pos,
-            podcast=self._parse_podcast(sonic_channel),
-            provider_mappings={
-                ProviderMapping(
-                    item_id=eid,
-                    provider_domain=self.domain,
-                    provider_instance=self.instance_id,
-                )
-            },
-            duration=sonic_episode.duration,
-        )
-
-        if sonic_episode.publish_date:
-            episode.metadata.release_date = datetime.fromisoformat(sonic_episode.publish_date)
-
-        if sonic_episode.description:
-            episode.metadata.description = sonic_episode.description
-
-        return episode
-
     async def _get_podcast_episode(self, eid: str) -> SonicEpisode:
         chan_id, ep_id = eid.split(EP_CHAN_SEP)
         chan = await self._run_async(self._conn.get_podcasts, inc_episodes=True, pid=chan_id)
@@ -467,7 +364,7 @@ class OpenSonicProvider(MusicProvider):
         """Provide a generator for library playlists."""
         results = await self._run_async(self._conn.get_playlists)
         for entry in results:
-            yield self._parse_playlist(entry)
+            yield parse_playlist(self.instance_id, entry)
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """
@@ -615,7 +512,7 @@ class OpenSonicProvider(MusicProvider):
         except (ParameterError, DataNotFoundError) as e:
             msg = f"Playlist {prov_playlist_id} not found"
             raise MediaNotFoundError(msg) from e
-        return self._parse_playlist(sonic_playlist)
+        return parse_playlist(self.instance_id, sonic_playlist)
 
     async def get_podcast_episode(self, prov_episode_id: str) -> PodcastEpisode:
         """Get (full) podcast episode details by id."""
@@ -638,7 +535,7 @@ class OpenSonicProvider(MusicProvider):
         )
         channel = channels[0]
         for episode in channel.episode:
-            yield self._parse_epsiode(episode, channel)
+            yield parse_epsiode(self.instance_id, episode, channel)
 
     async def get_podcast(self, prov_podcast_id: str) -> Podcast:
         """Get full Podcast details by id."""
@@ -650,7 +547,7 @@ class OpenSonicProvider(MusicProvider):
             self._conn.get_podcasts, inc_episodes=True, pid=prov_podcast_id
         )
 
-        return self._parse_podcast(channels[0])
+        return parse_podcast(self.instance_id, channels[0])
 
     async def get_library_podcasts(self) -> AsyncGenerator[Podcast, None]:
         """Retrieve library/subscribed podcasts from the provider."""
@@ -658,7 +555,7 @@ class OpenSonicProvider(MusicProvider):
             channels = await self._run_async(self._conn.get_podcasts, inc_episodes=True)
 
             for channel in channels:
-                yield self._parse_podcast(channel)
+                yield parse_podcast(self.instance_id, channel)
 
     async def get_playlist_tracks(self, prov_playlist_id: str, page: int = 0) -> list[Track]:
         """Get playlist tracks."""
@@ -720,7 +617,7 @@ class OpenSonicProvider(MusicProvider):
     async def create_playlist(self, name: str) -> Playlist:
         """Create a new empty playlist on the server."""
         playlist: SonicPlaylist = await self._run_async(self._conn.create_playlist, name=name)
-        return self._parse_playlist(playlist)
+        return parse_playlist(self.instance_id, playlist)
 
     async def add_playlist_tracks(self, prov_playlist_id: str, prov_track_ids: list[str]) -> None:
         """Append the listed tracks to the selected playlist.
