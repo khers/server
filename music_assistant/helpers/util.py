@@ -532,7 +532,7 @@ def get_primary_ip_address_from_zeroconf(discovery_info: AsyncServiceInfo) -> st
 
 
 def get_port_from_zeroconf(discovery_info: AsyncServiceInfo) -> int | None:
-    """Get primary IP address from zeroconf discovery info."""
+    """Get port from zeroconf discovery info."""
     return discovery_info.port
 
 
