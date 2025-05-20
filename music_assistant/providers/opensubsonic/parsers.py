@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from libopensonic.media import AlbumID3 as SonicAlbum
     from libopensonic.media import AlbumInfo as SonicAlbumInfo
     from libopensonic.media import ArtistID3 as SonicArtist
-    from libopensonic.media import ArtistInfo as SonicArtistInfo
+    from libopensonic.media import ArtistInfo2 as SonicArtistInfo
     from libopensonic.media import Child as SonicSong
     from libopensonic.media import Playlist as SonicPlaylist
     from libopensonic.media import PodcastChannel as SonicPodcast
@@ -113,7 +113,7 @@ def parse_track(
         provider=instance_id,
         name=sonic_song.title,
         album=album,
-        duration=sonic_song.duration if sonic_song.duration is not None else 0,
+        duration=sonic_song.duration or 0,
         disc_number=sonic_song.disc_number or 0,
         favorite=bool(sonic_song.starred),
         metadata=metadata,
@@ -124,7 +124,7 @@ def parse_track(
                 provider_instance=instance_id,
                 available=True,
                 audio_format=AudioFormat(
-                    content_type=ContentType.try_parse(sonic_song.content_type),
+                    content_type=ContentType.try_parse(sonic_song.content_type or "?"),
                     sample_rate=sonic_song.sampling_rate if sonic_song.sampling_rate else 44100,
                     bit_depth=sonic_song.bit_depth if sonic_song.bit_depth else 16,
                     channels=sonic_song.channel_count if sonic_song.channel_count else 2,
@@ -207,7 +207,7 @@ def parse_track(
 
 
 def parse_artist(
-    instance_id: str, sonic_artist: SonicArtist, sonic_info: SonicArtistInfo = None
+    instance_id: str, sonic_artist: SonicArtist, sonic_info: SonicArtistInfo | None = None
 ) -> Artist:
     """Parse artist and artistInfo into a Music Assistant Artist."""
     metadata: MediaItemMetadata = MediaItemMetadata()
