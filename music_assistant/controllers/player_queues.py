@@ -46,7 +46,6 @@ from music_assistant_models.media_items import (
     BrowseFolder,
     ItemMapping,
     MediaItemType,
-    MediaItemTypeOrItemMapping,
     PlayableMediaItemType,
     Playlist,
     PodcastEpisode,
@@ -369,7 +368,7 @@ class PlayerQueuesController(CoreController):
     async def play_media(
         self,
         queue_id: str,
-        media: MediaItemTypeOrItemMapping | list[MediaItemTypeOrItemMapping] | str | list[str],
+        media: MediaItemType | ItemMapping | list[MediaItemType | ItemMapping] | str | list[str],
         option: QueueOption | None = None,
         radio_mode: bool = False,
         start_item: PlayableMediaItemType | str | None = None,
@@ -1590,7 +1589,7 @@ class PlayerQueuesController(CoreController):
         )
 
     async def _resolve_media_items(
-        self, media_item: MediaItemTypeOrItemMapping, start_item: str | None = None
+        self, media_item: MediaItemType | ItemMapping | BrowseFolder, start_item: str | None = None
     ) -> list[MediaItemType]:
         """Resolve/unwrap media items to enqueue."""
         # resolve Itemmapping to full media item
