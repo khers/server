@@ -89,18 +89,17 @@ class OpenSonicProvider(MusicProvider):
     async def handle_async_init(self) -> None:
         """Set up the music provider and test the connection."""
         port = self.config.get_value(CONF_PORT)
-        if port is None:
-            port = 443
+        port = int(str(port)) or 443
         path = self.config.get_value(CONF_PATH)
         if path is None:
             path = ""
         self.conn = SonicConnection(
-            self.config.get_value(CONF_BASE_URL),
-            username=self.config.get_value(CONF_USERNAME),
-            password=self.config.get_value(CONF_PASSWORD),
-            legacy_auth=self.config.get_value(CONF_ENABLE_LEGACY_AUTH),
+            str(self.config.get_value(CONF_BASE_URL)),
+            username=str(self.config.get_value(CONF_USERNAME)),
+            password=str(self.config.get_value(CONF_PASSWORD)),
+            legacy_auth=bool(self.config.get_value(CONF_ENABLE_LEGACY_AUTH)),
             port=port,
-            server_path=path,
+            server_path=str(path),
             app_name="Music Assistant",
         )
         try:
@@ -308,7 +307,7 @@ class OpenSonicProvider(MusicProvider):
             album: Album | None = None
             for entry in results.song:
                 aid = entry.album_id if entry.album_id else entry.parent
-                if album is None or album.item_id != aid:
+                if aid is not None and (album is None or album.item_id != aid):
                     album = await self.get_album(prov_album_id=aid)
                 yield parse_track(self.logger, self.instance_id, entry, album=album)
             offset += count
@@ -447,6 +446,9 @@ class OpenSonicProvider(MusicProvider):
             self.conn.get_podcasts, inc_episodes=True, pid=prov_podcast_id
         )
         channel = channels[0]
+        if not channel.episode:
+            return
+
         for episode in channel.episode:
             yield parse_epsiode(self.instance_id, episode, channel)
 
@@ -492,7 +494,7 @@ class OpenSonicProvider(MusicProvider):
             aid = sonic_song.album_id if sonic_song.album_id else sonic_song.parent
             if not aid:
                 self.logger.warning("Unable to find album for track %s", sonic_song.id)
-            if not album or album.item_id != aid:
+            if aid is not None and (not album or album.item_id != aid):
                 album = await self.get_album(prov_album_id=aid)
             track = parse_track(self.logger, self.instance_id, sonic_song, album=album)
             track.position = index
